@@ -1,0 +1,24 @@
+{% extends 'base_user.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">Dashboard</div>
+        <div class="card-body">
+          <h5 class="card-title">Welcome {{ user.username }}!</h5>
+          <p class="card-text">You are logged in to your account.</p>
+          <ul>
+            <li><a href="{% url 'view_records_user' user.username %}">View Records</a></li>
+            <li><a href="{% url 'calculate_gp' user.username %}">Calculate GP</a></li>
+            <!-- Add additional links as needed for other areas of the application -->
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

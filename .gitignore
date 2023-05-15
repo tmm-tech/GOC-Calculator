@@ -1,0 +1,7 @@
+# ignore the venv folder
+venv/
+# ignore the .idea folder
+.idea/
+
+# ignore .vscode folder
+.vscode/

@@ -1,0 +1,47 @@
+{% extends 'base_admin.html' %}
+
+{% block title %}View Users Records{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h1>View Users Records</h1>
+      <hr>
+    </div>
+  </div>
+
+  {% if student %}
+  <div class="row">
+    <div class="col-md-12">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Email</th>
+            <th>Date Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for recod in users %}
+          <tr>
+            <td>{{ recod.firstname }}</td>
+            <td>{{ recod.lastname }}</td>
+            <td>{{ recod.email }}</td>
+            <td>{{ recod.date_joined }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="row">
+    <div class="col-md-12">
+      <p>No records found.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

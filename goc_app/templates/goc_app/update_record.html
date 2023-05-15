@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %} {% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>   
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">GOC Calculator</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarav">
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'staff_dashboard' %}">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout_staff' %}">Logout</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'login_staff' %}">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'register_staff' %}">Register</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        <a class="nav-link" href="{% url 'staff_dashboard' %}">Back</a>
+    </nav>
+    <div class="container">
+      <div class="container mt-4">
+        <h2>Update Student Details</h2>
+        <!-- update_record.html -->
+      <form method="POST">
+          {% csrf_token %}
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="firstname">First Name:</label>
+                    <input type="text" id="{{form.firstname.id_for_label }}" name="firstname" value="{{ student.firstname }}" readonly class="form-control">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="lastname">Last Name:</label>
+                    <input type="text" id="{{form.lastname.id_for_label }}" name="lastname" value="{{ student.lastname }}" readonly class="form-control">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="year">Year:</label>
+                    <select class="form-control" id="{{form.year.id_for_label }}" name="year">
+                      <option value="1">First Year</option>
+                      <option value="2">Second Year</option>
+                      <option value="3">Third Year</option>
+                      <option value="4">Fourth Year</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="semester">Semester:</label>
+                    <select class="form-control" id="{{form.semester.id_for_label }}" name="semester">
+                      <option value="1">Semester I</option>
+                      <option value="2">Semester II</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="course_name">Course:</label>
+                    <select id="{{form.course_name.id_for_label }}" name="course_name" class="form-control">
+                      {% for course in course %}
+                        <option value="{{ course.course_code }}">{{ course.course_title }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="{{form.lec_credits.id_for_label }}">Lecture Credits:</label>
+                    <input type="number" step="0.01" id="{{form.lec_credits.id_for_label }}" name="lec_credits" value="{{lecCredits}}" class="form-control"  min=0 max=4/>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="{{ form.lab_credits.id_for_label }}">Lab Credits:</label>
+                    <input type="number" step="0.01" id="{{form.lab_credits.id_for_label }}" name="lab_credits" value="{{labCredits}}" class="form-control"  min=0 max=4/>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="{{ form.tut_credits.id_for_label }}">Tutorial Credits:</label>
+                    <input type="number" step="0.01" id="{{ form.tut_credits.id_for_label }}" name="tut_credits" value="{{tutCredits}}" class="form-control"  min=0 max=4/>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                  <div class="col-md-6">
+                      <div class="form-group">
+                        <label for="{{form.total_credits.id_for_label }}">Total Credits:</label>
+                        <input type="number" step="0.01" id="{{form.total_credits.id_for_label }}" name="total_credits" value="{{total_credits}}" class="form-control" readonly/>
+                      </div>
+                    </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label for="{{form.grade.id_for_label }}">Grade:</label>
+                    <input type="text" id="{{form.grade.id_for_label }}" name="grade" value="{{grade}}" class="form-control" readonly/>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="{{form.description.id_for_label }}">Description:</label>
+                      <select class="form-control" id="{{form.description.id_for_label }}" name="description">
+                        <option value="SATISFACTORY">SATISFACTORY</option>
+                        <option value="ON PROBATION">ON PROBATION</option>
+                        <option value="CONDITIONAL PASS">CONDITIONAL PASS</option>
+                        <option value="FAIL">FAIL</option>
+                        <option value="NIL GRADE (FAIL)">NIL GRADE (FAIL)</option>
+                        <option value="UNSATISFACTORY">UNSATISFACTORY</option>
+                        <option value="INCOMPLETE">INCOMPLETE</option>
+                        <option value="COURSE WITHDRAWAL">COURSE WITHDRAWAL</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <button type="submit" class="btn btn-primary btn-lg">Add Course</button>
+                    </div>
+                  </div>
+                </div>
+          </form>
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Course Name</th>
+              <th scope="col">Lecture Credits</th>
+              <th scope="col">Lab Credits</th>
+              <th scope="col">Tutorial Credits</th>
+              <th scope="col">Total Credits</th>
+              <th scope="col">Grade</th>
+              <th scope="col">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for course in record %}
+              <tr>
+                <td>{{ course.code }}</td>
+                <td>{{ course.lec_credits }}</td>
+                <td>{{ course.lab_credits }}</td>
+                <td>{{ course.tut_credits }}</td>
+                <td>{{ course.total }}</td>
+                <td>{{ course.grade }}</td>
+                <td>{{ course.description }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+</body>
+</html>

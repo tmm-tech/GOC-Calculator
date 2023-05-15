@@ -1,0 +1,19 @@
+{% extends 'base_staff.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Add a New Course</h2>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="{{ form.course_code.id_for_label }}">Course Code</label>
+      <input type="text" class="form-control" id="{{form.course_code.id_for_label}}" name="course_code" required>
+    </div>
+    <div class="form-group">
+      <label for="{{ form.course_title.id_for_label }}">Course Title</label>
+      <input type="text" class="form-control" id="{{form.course_title.id_for_label}}" name="course_title" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Course</button>
+  </form>
+</div>
+{% endblock %}
