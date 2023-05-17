@@ -1,0 +1,21 @@
+<!-- update_des_key.html -->
+{% extends 'base_staff.html' %}
+
+{% block content %}
+  <h2>Create/Update DES Secret Key</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <p>
+      <label for="{{ form.key.id_for_label }}">Key:</label>
+      <input type="text" class="form-control" id="{{ form.key.id_for_label }}" name="key" required maxlength="8">
+    </p>
+    {% if form.key.errors %}
+      <div class="alert alert-danger">
+        {% for error in form.key.errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Update Key</button>
+  </form>
+{% endblock %}

@@ -1,7 +1,16 @@
-from decimal import Decimal
+import binascii
+import hashlib
+import hmac
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+from Crypto.Cipher import DES
+from Crypto.Util.Padding import pad
 from multiprocessing import Value
 from unittest import case
+from django import forms
 from django.http import HttpResponse
+from pyDes import des, PAD_PKCS5
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import F, Sum, FloatField, CharField, Value
@@ -11,9 +20,10 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Semester, Student, Record, SecretKey, RSAKey, Staff,Users, CalculateGp, Sysadmin,Student,Course
-from .forms import CalculateGpForm
-
+from .models import RSAKeyPair, Student, Record, SecretKey, RSAKeyPair, Staff,Users, CalculateGp, Sysadmin,Student,Course,update_des_key
+from .forms import CalculateGpForm, DESKeyForm, RSAKeyPairForm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 grade_points = {
     'A': 4.0,
@@ -76,6 +86,30 @@ def login_user(request):
 def view_records_user(request,username):
     user = get_object_or_404(Users, username=username)
     record = Record.objects.all() # get all Users objects as a queryset
+    users = Users.objects.all()
+    try:
+        secret = SecretKey.objects.get()
+    except SecretKey.DoesNotExist:
+        secret = None
+    if not secret:
+        return redirect('update_key')
+    des_cipher = des(secret.key, padmode=PAD_PKCS5)
+
+    decrypted_users = []
+    for student in users:
+        id = student.id
+            # Convert hexadecimal encrypted data to bytes
+        encrypted_username = binascii.unhexlify(student.username)
+
+        decrypted_username = des_cipher.decrypt(encrypted_username).decode('utf-8')
+        
+        decrypted_user = {
+            'id':id,
+            'email': decrypted_username,
+        }
+        print(decrypted_user)
+        
+        decrypted_users.append(decrypted_user)
     return render(request, 'goc_app/view_records_user.html', {'users': user,'record':record})
 
 
@@ -110,6 +144,13 @@ def logout_staff(request):
 @login_required
 def update_record_staff(request, id):
     student = get_object_or_404(Student, id=id)
+    secret=SecretKey.objects.get()
+    
+    des_cipher = des(secret.key, padmode=PAD_PKCS5)
+    encrypted_first_name = binascii.unhexlify(student.firstname)
+    encrypted_last_name = binascii.unhexlify(student.lastname)
+    decrypted_first_name = des_cipher.decrypt(encrypted_first_name).decode('utf-8')
+    decrypted_last_name = des_cipher.decrypt(encrypted_last_name).decode('utf-8')
     print(f"update records: {id}")
     course = Course.objects.all()
     record =Record.objects.all()
@@ -175,30 +216,103 @@ def update_record_staff(request, id):
             else:
                 grade = "F"
                 grade_desc = "FAIL"
+        code=des_cipher.encrypt(course_code.encode('utf-8'))
+        year=des_cipher.encrypt(year.encode('utf-8'))
+        semester=des_cipher.encrypt(semester.encode('utf-8'))
+        grade=des_cipher.encrypt(grade.encode('utf-8'))
+        total=des_cipher.encrypt(str(total_credits).encode('utf-8'))
+        description=des_cipher.encrypt(grade_desc.encode('utf-8'))
+        lec_credits=des_cipher.encrypt(str(lec_credits).encode('utf-8'))
+        lab_credits=des_cipher.encrypt(str(lab_credits).encode('utf-8'))
+        tut_credits=des_cipher.encrypt(str(tut_credits).encode('utf-8'))
         
         details = Record.objects.create(
-            code=course_code,
-            year=year,
-            semester=semester,
-            grade=grade,
-            total=total_credits,
-            description=grade_desc,
-            lec_credits=lec_credits,
-            lab_credits=lab_credits,
-            tut_credits=tut_credits,
+            code=binascii.hexlify(code).decode('utf-8'),
+            year=binascii.hexlify(year).decode('utf-8'),
+            semester=binascii.hexlify(semester).decode('utf-8'),
+            grade=binascii.hexlify(grade).decode('utf-8'),
+            total=binascii.hexlify(total).decode('utf-8'),
+            description=binascii.hexlify(description).decode('utf-8'),
+            lec_credits=binascii.hexlify(lec_credits).decode('utf-8'),
+            lab_credits=binascii.hexlify(lab_credits).decode('utf-8'),
+            tut_credits=binascii.hexlify(tut_credits).decode('utf-8'),
             student_id=id
         )
         details.save()
         messages.success(request, "Record updated successfully.")
         return redirect("update_record_staff", id=id)
+    decrypted_records = []
+    for recod in record:
+        id= recod.id
+            # Convert hexadecimal encrypted data to bytes
+        code = binascii.unhexlify(recod.code)
+        year = binascii.unhexlify(recod.year)
+        semester = binascii.unhexlify(recod.semester)
+        total = binascii.unhexlify(recod.total)
+        grade = binascii.unhexlify(recod.grade)
+        description = binascii.unhexlify(recod.description)
+        lec = binascii.unhexlify(recod.lec_credits) 
+        lab = binascii.unhexlify(recod.lab_credits)
+        tut  = binascii.unhexlify(recod.tut_credits)
+
+        # Decrypt the student details
+        code = des_cipher.decrypt(code).decode('utf-8')
+        year = des_cipher.decrypt(year).decode('utf-8')
+        semester = des_cipher.decrypt(semester).decode('utf-8')
+        total = des_cipher.decrypt(total).decode('utf-8')
+        grade = des_cipher.decrypt(grade).decode('utf-8')
+        description = des_cipher.decrypt(description).decode('utf-8')
+        lec = des_cipher.decrypt(lec).decode('utf-8')
+        lab = des_cipher.decrypt(lab).decode('utf-8')
+        tut  = des_cipher.decrypt(tut).decode('utf-8')
+        
+        decrypted_record = {
+            'id':id,
+            'code': code,
+            'year': year,
+            'semester': semester,
+            'total': total,
+            'grade': grade,
+            'description':description,
+            'lec_credits':lec,
+            'lab_credits':lab,
+            'tut_credits':tut
+        }
+    
+        decrypted_records.append(decrypted_record) 
+        
     context = {
         "student": student,
         "course": course,
-        "record": record,
+        "record": decrypted_records,
+        "name":decrypted_first_name,
+        "last":decrypted_last_name
     }
     return render(request, "goc_app/update_record.html", context)
 
-
+def update_des_key_view(request):
+    if request.method == 'POST':
+        form = DESKeyForm(request.POST)
+        if form.is_valid():
+            key = form.cleaned_data['key']
+            # Add your custom conditions here
+            if not key.isalpha():
+                form.add_error('key', 'Key must contain only alphabetic characters.')
+            elif len(key) != 8:
+                form.add_error('key', 'Key must be exactly 8 characters long.')
+            else:
+                encoded_key = key.encode()  # Encode the key to bytes
+                secret_key = SecretKey.objects.first()
+                if secret_key:
+                    secret_key.key = encoded_key
+                    secret_key.save()
+                else:
+                    SecretKey.objects.create(key=encoded_key)
+                return redirect('staff_dashboard')
+    else:
+        form = DESKeyForm()
+    
+    return render(request, 'goc_app/update_des_key.html', {'form': form})
 
 
 
@@ -247,7 +361,7 @@ def add_user(request):
         user = User.objects.create_user(email=email, password=password, first_name=firstname, last_name=lastname, username=username)
         user.save()
         messages.success(request, 'User registered successfully')
-        return redirect('view_users')
+        return redirect('sysadmin_dashboard')
     return render(request, 'goc_app/add_user.html')
 
 @login_required(login_url='login_sysadmin')
@@ -289,24 +403,92 @@ def login_staff(request):
             messages.error(request, 'Invalid username or password')
     return render(request, 'goc_app/login_staff.html')
 
-@login_required(login_url='login_staff')
+
+
 def view_records_staff(request):
-        student = Student.objects.all()
-        return render(request, 'goc_app/view_records_staff.html', {'student': student})
+    students = Student.objects.all()
+    try:
+        secret = SecretKey.objects.get()
+    except SecretKey.DoesNotExist:
+        secret = None
+    if not secret:
+        return redirect('update_key')
+    des_cipher = des(secret.key, padmode=PAD_PKCS5)
+
+    decrypted_students = []
+    for student in students:
+        id= student.id
+            # Convert hexadecimal encrypted data to bytes
+        encrypted_email = binascii.unhexlify(student.email)
+        encrypted_password = binascii.unhexlify(student.password)
+        encrypted_first_name = binascii.unhexlify(student.firstname)
+        encrypted_last_name = binascii.unhexlify(student.lastname)
+        encrypted_username = binascii.unhexlify(student.username)
+
+        # Decrypt the student details
+        decrypted_email = des_cipher.decrypt(encrypted_email).decode('utf-8')
+        decrypted_password = des_cipher.decrypt(encrypted_password).decode('utf-8')
+        decrypted_first_name = des_cipher.decrypt(encrypted_first_name).decode('utf-8')
+        decrypted_last_name = des_cipher.decrypt(encrypted_last_name).decode('utf-8')
+        decrypted_username = des_cipher.decrypt(encrypted_username).decode('utf-8')
+        
+        decrypted_student = {
+            'id':id,
+            'email': decrypted_email,
+            'password': decrypted_password,
+            'firstname': decrypted_first_name,
+            'lastname': decrypted_last_name,
+            'username': decrypted_username,
+            'date_joined':student.date_joined
+        }
+        
+        decrypted_students.append(decrypted_student)
+
+    return render(request, 'goc_app/view_records_staff.html', {'students': decrypted_students})
+
+
+
+
+
 
 @login_required(login_url='login_staff')
 def add_staff_user(request):
+    try:
+        secret = SecretKey.objects.get()
+    except SecretKey.DoesNotExist:
+        secret = None
+    if not secret:
+        return redirect('update_key')
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password1')
         first_name = request.POST.get('firstname')
         last_name = request.POST.get('lastname')
         username = request.POST.get('username')
-        student = Student.objects.create(email=email, username=username, password=password, firstname=first_name, lastname=last_name)
-        student.set_password(password)
+        # Encrypt the user details using DES
+        # Create the des_cipher object
+            # Create the des_cipher object
+        des_cipher = des(secret.key, padmode=PAD_PKCS5)
+
+        # Encrypt the student details
+        encrypted_email = des_cipher.encrypt(email.encode('utf-8'))
+        encrypted_password = des_cipher.encrypt(password.encode('utf-8'))
+        encrypted_first_name = des_cipher.encrypt(first_name.encode('utf-8'))
+        encrypted_last_name = des_cipher.encrypt(last_name.encode('utf-8'))
+        encrypted_username = des_cipher.encrypt(username.encode('utf-8'))
+
+        # Convert encrypted data to hexadecimal
+        encrypted_email = binascii.hexlify(encrypted_email).decode('utf-8')
+        encrypted_password = binascii.hexlify(encrypted_password).decode('utf-8')
+        encrypted_first_name = binascii.hexlify(encrypted_first_name).decode('utf-8')
+        encrypted_last_name = binascii.hexlify(encrypted_last_name).decode('utf-8')
+        encrypted_username = binascii.hexlify(encrypted_username).decode('utf-8')
+
+
+         # Create and save the encrypted user details
+        student = Student.objects.create(email=encrypted_email, username=encrypted_username, password=encrypted_password, firstname=encrypted_first_name, lastname=encrypted_last_name)
         student.save()
         students = Users.objects.create(email=email, username=username, password=password, firstname=first_name, lastname=last_name)
-        students.set_password(password)
         students.save()
         user = User.objects.create_user(email=email, password=password, first_name=first_name, last_name=last_name, username=username)
         user.save()
@@ -317,8 +499,56 @@ def add_staff_user(request):
 @login_required(login_url='login_user')
 def calculate_gp(request,username):
     user = get_object_or_404(Users, username=username)
-    student=Record.objects.all()
-    return render(request, 'goc_app/calculate_gp_user.html', {'student': student, 'user': user})
+    record = Record.objects.all() # get all Users objects as a queryset
+    try:
+        secret = SecretKey.objects.get()
+    except SecretKey.DoesNotExist:
+        secret = None
+    if not secret:
+        return redirect('update_key')
+    des_cipher = des(secret.key, padmode=PAD_PKCS5)
+    decrypted_records = []
+    for recod in record:
+        id= recod.id
+            # Convert hexadecimal encrypted data to bytes
+        code = binascii.unhexlify(recod.code)
+        year = binascii.unhexlify(recod.year)
+        semester = binascii.unhexlify(recod.semester)
+        total = binascii.unhexlify(recod.total)
+        grade = binascii.unhexlify(recod.grade)
+        description = binascii.unhexlify(recod.description)
+        lec = binascii.unhexlify(recod.lec_credits) 
+        lab = binascii.unhexlify(recod.lab_credits)
+        tut  = binascii.unhexlify(recod.tut_credits)
+
+        # Decrypt the student details
+        code = des_cipher.decrypt(code).decode('utf-8')
+        year = des_cipher.decrypt(year).decode('utf-8')
+        semester = des_cipher.decrypt(semester).decode('utf-8')
+        total = des_cipher.decrypt(total).decode('utf-8')
+        grade = des_cipher.decrypt(grade).decode('utf-8')
+        description = des_cipher.decrypt(description).decode('utf-8')
+        lec = des_cipher.decrypt(lec).decode('utf-8')
+        lab = des_cipher.decrypt(lab).decode('utf-8')
+        tut  = des_cipher.decrypt(tut).decode('utf-8')
+        
+        decrypted_record = {
+            'id':id,
+            'code': code,
+            'year': year,
+            'semester': semester,
+            'total': total,
+            'grade': grade,
+            'description':description,
+            'lec_credits':lec,
+            'lab_credits':lab,
+            'tut_credits':tut
+        }
+    
+        decrypted_records.append(decrypted_record) 
+        print(decrypted_records)
+    return render(request, 'goc_app/calculate_gp_user.html', {'users': user,'record':decrypted_records})
+
 
 def add_course(request):
     if request.method == 'POST':
@@ -398,43 +628,170 @@ def calculate_grade(request):
     return render(request,"goc_app/update_record.html", total_credits=total_credits, grade=grade, description=des)
 
 
+def update_rsa_key_pair(request):
+    try:
+        rsa_key_pair = RSAKeyPair.objects.latest('created_at')
+    except RSAKeyPair.DoesNotExist:
+        rsa_key_pair = None
+
+    if request.method == 'POST':
+        form = RSAKeyPairForm(request.POST)
+        if form.is_valid():
+            public_key = form.cleaned_data['public_key']
+            private_key = form.cleaned_data['private_key']
+            rsa_key_pair = RSAKeyPair.objects.create(public_key=public_key.encode(), private_key=private_key.encode())
+            return redirect('staff_dashboard')
+    else:
+        form = RSAKeyPairForm()
+
+    return render(request, 'goc_app/update_rsa_key_pair.html', {'form': form, 'rsa_key_pair': rsa_key_pair})
+
 def calculate_gpa(request):
     if request.method == 'GET':
         year = request.GET.get('year')
         semester = request.GET.get('semester')
-        
-        # Get the student object with the current user's username
-         # Get the student object with the current user's username
-        student = Student.objects.get(username=request.user.username)     
-        # Get the student's ID
+        secret = SecretKey.objects.get()
+        des_cipher = des(secret.key, padmode=PAD_PKCS5)
+        # Decrypt the username
+        encrypted_username = des_cipher.encrypt(request.user.username.encode('utf-8'))
+        encrypted_user = binascii.hexlify(encrypted_username).decode('utf-8')
+        encrypted_year = des_cipher.encrypt(year.encode('utf-8'))
+        year = binascii.hexlify(encrypted_year).decode('utf-8')
+        encrypted_semester = des_cipher.encrypt(semester.encode('utf-8'))
+        semester = binascii.hexlify(encrypted_semester).decode('utf-8')
+        print(encrypted_user)
+        # if 
+        student = Student.objects.get(username=encrypted_user)
         student_id = student.id
-        # Filter the records by the student's ID, year, and semester
         courses = Record.objects.filter(student_id=student_id, year=year, semester=semester)
+        decrypted_records = []
+        for recod in courses:
+            id= recod.id
+                # Convert hexadecimal encrypted data to bytes
+            code = binascii.unhexlify(recod.code)
+            year = binascii.unhexlify(recod.year)
+            semester = binascii.unhexlify(recod.semester)
+            total = binascii.unhexlify(recod.total)
+            grade = binascii.unhexlify(recod.grade)
+            description = binascii.unhexlify(recod.description)
+            lec = binascii.unhexlify(recod.lec_credits) 
+            lab = binascii.unhexlify(recod.lab_credits)
+            tut  = binascii.unhexlify(recod.tut_credits)
+
+            # Decrypt the student details
+            code = des_cipher.decrypt(code).decode('utf-8')
+            year = des_cipher.decrypt(year).decode('utf-8')
+            semester = des_cipher.decrypt(semester).decode('utf-8')
+            total = des_cipher.decrypt(total).decode('utf-8')
+            grade = des_cipher.decrypt(grade).decode('utf-8')
+            description = des_cipher.decrypt(description).decode('utf-8')
+            lec = des_cipher.decrypt(lec).decode('utf-8')
+            lab = des_cipher.decrypt(lab).decode('utf-8')
+            tut  = des_cipher.decrypt(tut).decode('utf-8')
+            
+            decrypted_record = {
+                'id':id,
+                'code': code,
+                'year': year,
+                'semester': semester,
+                'total': total,
+                'grade': grade,
+                'description':description,
+                'lec_credits':lec,
+                'lab_credits':lab,
+                'tut_credits':tut
+            }
         
+            decrypted_records.append(decrypted_record) 
         if len(courses) == 0:
-            return render(request, 'goc_app/calculate_gp_user.html', {'student': None})
+            return render(request, 'goc_app/calculate_gp_user.html', {'record': None})
         else:
-            return render(request, 'goc_app/calculate_gp_user.html', {'student': courses})
-    elif request.method == 'POST':
-        student = Student.objects.get(username=request.user.username)
-        student_id = student.id
-        courses = Record.objects.filter(student_id=student_id)
-        total_credits = courses.aggregate(total_credits=Sum('total'))['total_credits']  
-        student = Student.objects.get(username=request.user.username)
-        student_id = student.id
-        courses = Record.objects.filter(student_id=student_id)
-        total_credits = courses.aggregate(total_credits=Sum('total'))['total_credits']
-        quality_sum = 0
-        for course in courses:
-            grade_point = grade_points.get(course.grade, 0.0)
-            quality_points = float(course.total) * grade_point
-            print(quality_points)
-            quality_sum += quality_points
-        points = float(quality_sum) / float(total_credits)
-        print(points)
-        gpa = round(points, 2)
-        cgpa = round(points, 2)
-        print(gpa)
-        return render(request, 'goc_app/calculate_gp_user.html', {'student': courses, 'gpa': gpa, 'cgpa': cgpa})
+            try:
+                decrypted_records = []
+                for recod in courses:
+                    id= recod.id
+                        # Convert hexadecimal encrypted data to bytes
+                    code = binascii.unhexlify(recod.code)
+                    year = binascii.unhexlify(recod.year)
+                    semester = binascii.unhexlify(recod.semester)
+                    total = binascii.unhexlify(recod.total)
+                    grade = binascii.unhexlify(recod.grade)
+                    description = binascii.unhexlify(recod.description)
+                    lec = binascii.unhexlify(recod.lec_credits) 
+                    lab = binascii.unhexlify(recod.lab_credits)
+                    tut  = binascii.unhexlify(recod.tut_credits)
+
+                    # Decrypt the student details
+                    code = des_cipher.decrypt(code).decode('utf-8')
+                    year = des_cipher.decrypt(year).decode('utf-8')
+                    semester = des_cipher.decrypt(semester).decode('utf-8')
+                    total = des_cipher.decrypt(total).decode('utf-8')
+                    grade = des_cipher.decrypt(grade).decode('utf-8')
+                    description = des_cipher.decrypt(description).decode('utf-8')
+                    lec = des_cipher.decrypt(lec).decode('utf-8')
+                    lab = des_cipher.decrypt(lab).decode('utf-8')
+                    tut  = des_cipher.decrypt(tut).decode('utf-8')
+                    
+                    decrypted_record = {
+                        'id':id,
+                        'code': code,
+                        'year': year,
+                        'semester': semester,
+                        'total': total,
+                        'grade': grade,
+                        'description':description,
+                        'lec_credits':lec,
+                        'lab_credits':lab,
+                        'tut_credits':tut
+                    }        
+                    decrypted_records.append(decrypted_record) 
+                total_credits = sum(float(record['total']) for record in decrypted_records)
+                print(total_credits)
+                quality_sum = 0.0
+                for course in decrypted_records:
+                    grade_point = grade_points.get(course['grade'], 0.0)
+                    quality_points = float(course['total']) * grade_point
+                    quality_sum += quality_points
+            
+                points = quality_sum / total_credits
+                gpa = round(points, 2)
+                cgpa = round(points, 2)
+                print(gpa)
+                # Generate the hash using XOR of DES ciphertext blocks
+                # Retrieve the private key from the database
+                key_pair = RSAKeyPair.objects.latest('created_at')
+                private_key = key_pair.private_key
+                print(private_key)
+                # Generate the digital signature
+                message = f"GPA: {gpa}, CGPA: {cgpa}"
+            
+                # Generate the hash using XOR of DES ciphertext blocks
+                des_key = b'SECRET01'
+                cipher = DES.new(des_key, DES.MODE_ECB)
+                ciphertext_blocks = []
+                
+                message_bytes = message.encode()
+                padded_message = pad(message_bytes, DES.block_size)  # Pad the message to the block size
+                
+                for i in range(0, len(padded_message), DES.block_size):
+                    block = padded_message[i:i+DES.block_size]
+                    ciphertext = cipher.encrypt(block)
+                    ciphertext_blocks.append(ciphertext)
+                
+                hash_value = ciphertext_blocks[0]
+                
+                for i in range(1, len(ciphertext_blocks)):
+                    hash_value = bytes([a ^ b for a, b in zip(hash_value, ciphertext_blocks[i])])
+                
+                # Sign the hash value using the private key
+                message_hash = SHA256.new(hash_value)
+                private_key_rsa = RSA.import_key(private_key)
+                signer = pkcs1_15.new(private_key_rsa)
+                signature = signer.sign(message_hash)
+                
+                return render(request, 'goc_app/calculate_gp_user.html', {'record': decrypted_records, 'gpa': gpa, 'cgpa': cgpa, 'signature': signature, 'year':year, 'semester':semester})
+            except Student.DoesNotExist:
+                return HttpResponse('Student does not exist.')
+
     else:
         return HttpResponse('Invalid request method.')

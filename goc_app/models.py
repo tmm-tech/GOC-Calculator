@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin,Group,Permission
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.backends import default_backend
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -75,6 +77,17 @@ class Staff(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['lastname', 'firstname', 'username']
     
     objects = UserManager()
+    
+def update_des_key(self, new_key):
+    if len(new_key) != 8:
+        raise ValueError("DES secret key must be 8 bytes long")
+    
+    secret_key = SecretKey.objects.first()
+    if secret_key is None:
+        secret_key = SecretKey()
+    
+    secret_key.key = new_key
+    secret_key.save()
 
 class Student(AbstractBaseUser, PermissionsMixin):
     lastname = models.CharField(max_length=100)
@@ -159,10 +172,10 @@ class Record(models.Model):
     code = models.CharField(max_length=20)
     description = models.CharField(max_length=100)
     grade = models.CharField(max_length=10)
-    total = models.DecimalField(max_digits=5, decimal_places=2)
-    tut_credits = models.DecimalField(max_digits=5, decimal_places=2)
-    lec_credits = models.DecimalField(max_digits=5, decimal_places=2)
-    lab_credits = models.DecimalField(max_digits=5, decimal_places=2)
+    total = models.CharField(max_length=4)
+    tut_credits = models.CharField(max_length=4)
+    lec_credits = models.CharField(max_length=4)
+    lab_credits = models.CharField(max_length=4)
     semester = models.CharField(max_length=50)
     year = models.CharField(max_length=50)
     student_id = models.IntegerField()
@@ -170,9 +183,12 @@ class Record(models.Model):
 class SecretKey(models.Model):
     key = models.BinaryField()
 
-class RSAKey(models.Model):
-    public_key = models.BinaryField()
+class RSAKeyPair(models.Model):
     private_key = models.BinaryField()
+    public_key = models.BinaryField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 
 class Semester(models.Model):
     name = models.CharField(max_length=100)

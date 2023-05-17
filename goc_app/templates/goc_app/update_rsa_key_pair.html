@@ -1,0 +1,29 @@
+{% extends 'base_staff.html' %}
+
+{% block content %}
+<h2>Creating/Updating RSA KEY Signature</h2>
+{% if rsa_key_pair %}
+  <h2>Existing RSA Key Pair</h2>
+  <p>Public Key: {{ rsa_key_pair.public_key }}</p>
+  <p>Private Key: {{ rsa_key_pair.private_key }}</p>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <div class="form-group">
+    <label for="public_key">Public Key:</label><br />
+    <textarea id="public_key" name="public_key" rows="5" cols="50">
+      {% if rsa_key_pair %}{{ rsa_key_pair.public_key }}{% endif %}
+    </textarea><br /><br />
+  </div>
+  <div class="form-group">
+    <label for="private_key">Private Key:</label><br />
+    <textarea id="private_key" name="private_key" rows="5" cols="50">
+      {% if rsa_key_pair %}{{ rsa_key_pair.private_key }}{% endif %}
+    </textarea><br /><br />
+  </div>
+  <div class="form-group">
+    <button type="submit" class="btn btn-primary">Save RSA Key Pair</button>
+  </div>
+</form>
+{% endblock %}

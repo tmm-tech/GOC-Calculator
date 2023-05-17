@@ -34,7 +34,9 @@ urlpatterns = [
     path('staff/register_users/', views.add_staff_user, name='staffregister_user'),
     path('staff/register_course/', views.add_course, name='add_course'),
     path('staff/dashboard/', views.dashboard_staff, name='staff_dashboard'),
-    path('staff/update-record/<int:id>', views.update_record_staff, name='update_record_staff'),
+    path('staff/update-record/<int:id>/', views.update_record_staff, name='update_record_staff'),
+    path('staff/update-key/', views.update_des_key_view, name='update_key'),
+    path('Staff/RSA Key',views.update_rsa_key_pair,name="update_rsa_key_pair"),
     path('calculate_grade/', views.calculate_grade, name='calculate_grade'),
 
 

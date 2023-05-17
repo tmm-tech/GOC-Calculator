@@ -11,7 +11,7 @@
     </div>
   </div>
 
-  {% if student %}
+  {% if students %}
   <div class="row">
     <div class="col-md-12">
       <table class="table table-striped">
@@ -25,7 +25,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for record in student %}
+          {% for record in students %}
           <tr>
             <td>{{ record.firstname }}</td>
             <td>{{ record.lastname }}</td>

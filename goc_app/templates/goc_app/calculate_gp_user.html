@@ -5,29 +5,30 @@
   <form method="GET" action="{% url 'calculate_gpa' %}">
     <div class="form-group">
       <label for="year">Year:</label>
-      <select name="year" id="year" class="form-control">
+      <select name="year" id="year" class="form-control" required>
         <option value="">--Select Year--</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
+        <option value="1" {% if year == '1' %}selected{% endif %}>1</option>
+        <option value="2" {% if year == '2' %}selected{% endif %}>2</option>
+        <option value="3" {% if year == '3' %}selected{% endif %}>3</option>
+        <option value="4" {% if year == '4' %}selected{% endif %}>4</option>
       </select>
     </div>
     <div class="form-group">
       <label for="semester">Semester:</label>
-      <select name="semester" id="semester" class="form-control">
+      <select name="semester" id="semester" class="form-control" required>
         <option value="">--Select Semester--</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
+        <option value="1" {% if semester == '1' %}selected{% endif %}>1</option>
+        <option value="2" {% if semester == '2' %}selected{% endif %}>2</option>
       </select>
     </div>
     <div class="form-group">
       <button type="submit" class="btn btn-primary">Filter</button>
     </div>
-  </form>  
-    {% if student %}
-    <form method="POST" action="{% url 'calculate_gpa' %}">
+  {% if record %}
+  <form method="POST" action="{% url 'calculate_gpa' %}">
     {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="semester" value="{{ semester }}">
     <table class="table">
       <thead>
         <tr>
@@ -37,7 +38,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for form in student %}
+        {% for form in record %}
         <tr>
           <td>{{ form.code }}</td>
           <td>{{ form.total }}</td>
@@ -49,24 +50,29 @@
     <div class="form-group">
       <button type="submit" class="btn btn-primary">Calculate</button>
     </div>
-    </form>
-    {% else %}
-    <div class="row">
-      <div class="col-md-12">
-        <p>No records found.</p>
-      </div>
+  </form>
+</form>
+  {% if gpa %}
+  <div class="alert alert-success">
+    <p>GPA: {{ gpa }}</p>
+    <p>CGPA: {{ cgpa }}</p>
+  </div>
+  {% else %}
+  <div class="row">
+    <div class="col-md-12">
+      <p>No records found.</p>
     </div>
-    {% endif %}
-    {% if gpa %}
-    <div class="alert alert-success">
-      <p>GPA: {{ gpa }}</p>
-      <p>CGPA: {{ cgpa }}</p>
+  </div>
+  {% endif %}
+
+  <h3>Digital Signature:</h3>
+  <p>{{ signature }}</p>
+
+  {% else %}
+  <div class="row">
+    <div class="col-md-12">
+      <p>No records found.</p>
     </div>
-    {% else %}
-    <div class="row">
-      <div class="col-md-12">
-        <p>No records found.</p>
-      </div>
-    </div>
-    {% endif %}
+  </div>
+  {% endif %}
 {% endblock %}
